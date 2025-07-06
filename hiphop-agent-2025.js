@@ -1,56 +1,51 @@
-const { fetch } = require('undici');
-const { writeFileSync } = require('fs');
+const fs = require('fs');
+const path = require('path');
 
-// 2025 Free Sources (No API Keys)
-const SOURCES = [
-  {
-    name: "HipHopDX RSS",
-    url: "https://hiphopdx.com/feed",
-    type: "rss"
-  },
-  {
-    name: "HotNewHipHop HTML",
-    url: "https://www.hotnewhiphop.com/news/",
-    type: "html"
-  }
-];
+// 1. Configure output
+const OUTPUT_DIR = 'data';
+const OUTPUT_FILE = 'articles.json';
 
-async function fetchWithRetry(url, retries = 3) {
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
-      }
-    });
-    return await response.text();
-  } catch (error) {
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return fetchWithRetry(url, retries - 1);
+// 2. Sample Scraper (Replace with real scraping)
+async function scrapeArticles() {
+  return [
+    {
+      title: "Kendrick Lamar Announces Tour",
+      link: "https://hiphopdx.com/news/kendrick-tour",
+      date: new Date().toISOString()
+    },
+    {
+      title: "New Drake Album Leaks",
+      link: "https://www.xxlmag.com/drake-leak",
+      date: new Date().toISOString()
     }
-    throw error;
+  ];
+}
+
+// 3. Save to File
+async function saveToFile(articles) {
+  try {
+    // Create data directory if needed
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    // Write to file
+    const outputPath = path.join(OUTPUT_DIR, OUTPUT_FILE);
+    fs.writeFileSync(outputPath, JSON.stringify(articles, null, 2));
+    
+    console.log(`✅ Saved ${articles.length} articles to ${outputPath}`);
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Failed to save file:', error);
+    return false;
   }
 }
 
+// 4. Main Function
 async function main() {
-  const results = [];
-  
-  for (const source of SOURCES) {
-    try {
-      const content = await fetchWithRetry(source.url);
-      // Simplified parsing (no external deps)
-      const articles = content.match(/<title>(.*?)<\/title>.*?<link>(.*?)<\/link>/gs) || [];
-      results.push(...articles.map(a => ({
-        title: a.match(/<title>(.*?)<\/title>/)[1],
-        link: a.match(/<link>(.*?)<\/link>/)[1]
-      })));
-    } catch (error) {
-      console.error(`Failed ${source.name}: ${error.message}`);
-    }
-  }
-
-  writeFileSync('articles.json', JSON.stringify(results, null, 2));
-  console.log(`✅ Saved ${results.length} articles`);
+  const articles = await scrapeArticles();
+  await saveToFile(articles);
 }
 
 main();
