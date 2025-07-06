@@ -21,7 +21,6 @@ async function scrapeArticles() {
     console.error('Scraping failed:', error);
     return [];
   }
-
 }
 
 // 3. Save to File
