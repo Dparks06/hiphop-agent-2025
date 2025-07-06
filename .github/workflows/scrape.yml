@@ -24,8 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm install undici
           
-      - name: Run Scraper
-        run: node hiphop-agent-2025.js
+     - name: Run Scraper
+  run: node hiphop-agent-2025.js
+  env:
+    NODE_OPTIONS: --unhandled-rejections=strict
         
       - name: Commit Results
         run: |
