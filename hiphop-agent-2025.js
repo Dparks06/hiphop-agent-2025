@@ -22,7 +22,6 @@ async function scrapeArticles() {
     return [];
   }
 
-
 // 3. Save to File
 async function saveToFile(articles) {
   try {
