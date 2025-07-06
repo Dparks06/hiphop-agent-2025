@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { fetch } = require('undici'); // Required for Node.js fetch
 
 // 1. Configure output
 const OUTPUT_DIR = 'data';
@@ -21,8 +22,8 @@ async function scrapeArticles() {
     console.error('Scraping failed:', error);
     return [];
   }
+} // <-- This was missing in your original code
 
-// 3. Save to File
 async function saveToFile(articles) {
   try {
     // Create data directory if needed
@@ -43,10 +44,9 @@ async function saveToFile(articles) {
   }
 }
 
-// 4. Main Function
 async function main() {
   const articles = await scrapeArticles();
   await saveToFile(articles);
 }
 
-main();
+main().catch(console.error);
