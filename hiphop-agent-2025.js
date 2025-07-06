@@ -6,31 +6,59 @@ const path = require('path');
 const OUTPUT_DIR = 'data';
 const OUTPUT_FILE = 'articles.json';
 
-// New: Multiple fallback sources
+// Updated sources with proper headers
 const SOURCES = [
   {
     name: "HipHopDX",
     url: "https://hiphopdx.com/feed",
-    type: "rss"
+    type: "rss",
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
   },
   {
-    name: "XXL",
+    name: "HotNewHipHop",
+    url: "https://www.hotnewhiphop.com/feed",
+    type: "rss",
+    headers: {
+      'Accept': 'application/rss+xml'
+    }
+  },
+  {
+    name: "XXL Magazine",
     url: "https://www.xxlmag.com/feed",
     type: "rss"
   }
 ];
 
-async function fetchWithRetry(url, retries = 3) {
+async function fetchWithRetry(url, options = {}, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)',
+          ...options.headers
+        }
+      });
+      
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.text();
     } catch (error) {
       if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
     }
   }
+}
+
+async function parseRSS(xml, sourceName) {
+  const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+  return items.map(item => ({
+    title: (item.match(/<title>([\s\S]*?)<\/title>/) || [,'No title'])[1].trim(),
+    link: (item.match(/<link>([\s\S]*?)<\/link>/) || [,'#'])[1].trim(),
+    date: (item.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [,new Date().toISOString()])[1],
+    source: sourceName
+  }));
 }
 
 async function scrapeAll() {
@@ -39,60 +67,21 @@ async function scrapeAll() {
   for (const source of SOURCES) {
     try {
       console.log(`Scraping ${source.name}...`);
-      const xml = await fetchWithRetry(source.url);
-      
-      const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
-      items.forEach(item => {
-        allArticles.push({
-          title: (item.match(/<title>([\s\S]*?)<\/title>/) || [,'No title'])[1].trim(),
-          link: (item.match(/<link>([\s\S]*?)<\/link>/) || [,'#'])[1].trim(),
-          date: (item.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [,new Date().toISOString()])[1],
-          source: source.name
-        });
+      const content = await fetchWithRetry(source.url, {
+        headers: source.headers || {}
       });
       
+      const articles = await parseRSS(content, source.name);
+      allArticles.push(...articles);
+      console.log(`✅ Found ${articles.length} from ${source.name}`);
+      
     } catch (error) {
-      console.error(`Failed to scrape ${source.name}:`, error.message);
+      console.error(`❌ Failed ${source.name}:`, error.message);
     }
   }
-  
-  if (allArticles.length === 0) {
-    // Fallback: Create test data if all sources fail
-    console.warn('No articles found - using test data');
-    return [{
-      title: "TEST: Scraper is working but no live articles found",
-      link: "https://example.com",
-      date: new Date().toISOString(),
-      source: "System"
-    }];
-  }
-  
-  return allArticles;
-}
 
-async function saveToFile(articles) {
-  try {
-    if (!fs.existsSync(OUTPUT_DIR)) {
-      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    }
-    
-    const outputPath = path.join(OUTPUT_DIR, OUTPUT_FILE);
-    fs.writeFileSync(outputPath, JSON.stringify(articles, null, 2));
-    console.log(`✅ Saved ${articles.length} articles to ${outputPath}`);
-    
-  } catch (error) {
-    console.error('File save failed:', error);
-    process.exit(1);
-  }
-}
-
-(async () => {
-  try {
-    const articles = await scrapeAll();
-    await saveToFile(articles);
-    process.exit(0);
-  } catch (error) {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  }
-})();
+  // Final quality check
+  return allArticles.filter(article => 
+    article.title !== "No title" && 
+    !article.link.startsWith('#') &&
+    article.title.length
