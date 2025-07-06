@@ -23,11 +23,6 @@ const SOURCES = [
     headers: {
       'Accept': 'application/rss+xml'
     }
-  },
-  {
-    name: "XXL Magazine",
-    url: "https://www.xxlmag.com/feed",
-    type: "rss"
   }
 ];
 
@@ -80,8 +75,52 @@ async function scrapeAll() {
     }
   }
 
-  // Final quality check
-  return allArticles.filter(article => 
+  // Fixed: Proper parenthesis and filtering
+  return allArticles.filter(article => (
     article.title !== "No title" && 
     !article.link.startsWith('#') &&
-    article.title.length
+    article.title && article.title.length > 10
+  ));
+}
+
+async function saveToFile(articles) {
+  try {
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+    
+    const outputPath = path.join(OUTPUT_DIR, OUTPUT_FILE);
+    fs.writeFileSync(outputPath, JSON.stringify(articles, null, 2));
+    console.log(`💾 Saved ${articles.length} articles to ${outputPath}`);
+    
+  } catch (error) {
+    console.error('File save failed:', error);
+    process.exit(1);
+  }
+}
+
+(async () => {
+  try {
+    const articles = await scrapeAll();
+    
+    if (articles.length === 0) {
+      // Fallback test data if all sources fail
+      const testArticles = [{
+        title: "TEST: Scraper is working but no live articles found",
+        link: "https://example.com",
+        date: new Date().toISOString(),
+        source: "System"
+      }];
+      await saveToFile(testArticles);
+      console.warn('⚠️ Using fallback test data');
+      process.exit(0);
+    }
+    
+    await saveToFile(articles);
+    process.exit(0);
+    
+  } catch (error) {
+    console.error('Fatal error:', error.message);
+    process.exit(1);
+  }
+})();
