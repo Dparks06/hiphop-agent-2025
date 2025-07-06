@@ -5,20 +5,23 @@ const path = require('path');
 const OUTPUT_DIR = 'data';
 const OUTPUT_FILE = 'articles.json';
 
-// 2. Sample Scraper (Replace with real scraping)
 async function scrapeArticles() {
-  return [
-    {
-      title: "Kendrick Lamar Announces Tour",
-      link: "https://hiphopdx.com/news/kendrick-tour",
-      date: new Date().toISOString()
-    },
-    {
-      title: "New Drake Album Leaks",
-      link: "https://www.xxlmag.com/drake-leak",
-      date: new Date().toISOString()
-    }
-  ];
+  try {
+    const response = await fetch('https://hiphopdx.com/feed');
+    const xml = await response.text();
+    
+    const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+    return items.map(item => ({
+      title: item.match(/<title>([\s\S]*?)<\/title>/)[1].trim(),
+      link: item.match(/<link>([\s\S]*?)<\/link>/)[1].trim(),
+      date: item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)[1] || new Date().toISOString()
+    }));
+    
+  } catch (error) {
+    console.error('Scraping failed:', error);
+    return [];
+  }
+
 }
 
 // 3. Save to File
