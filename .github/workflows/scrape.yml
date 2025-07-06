@@ -1,7 +1,7 @@
-name: HipHop News Aggregator 2025  # <-- This controls the displayed name
+name: HipHop News Aggregator 2025
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Every 3 hours
+    - cron: '0 */3 * * *'
   workflow_dispatch:
 
 jobs:
