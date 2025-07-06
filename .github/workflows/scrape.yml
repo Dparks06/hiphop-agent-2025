@@ -1,4 +1,4 @@
-name: HipHop News Aggregator
+name: HipHop News Aggregator 2025  # <-- This controls the displayed name
 on:
   schedule:
     - cron: '0 */3 * * *'  # Every 3 hours
@@ -7,27 +7,24 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    permissions:  # <-- Add this section
+    permissions:
       contents: write
     
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for Git history
-      
+          fetch-depth: 0
+        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
           
       - name: Install dependencies
         run: npm install undici
           
-     - name: Run Scraper
-  run: node hiphop-agent-2025.js
-  env:
-    NODE_OPTIONS: --unhandled-rejections=strict
+      - name: Run Scraper
+        run: node hiphop-agent-2025.js
         
       - name: Commit Results
         run: |
